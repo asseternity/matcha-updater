@@ -33,7 +33,7 @@ cron.schedule("0 */6 * * *", async () => {
 
 // find chat id
 import TelegramBot from "node-telegram-bot-api";
-const bot = new TelegramBot(process.env.TG_BOT_TOKEN || "", { polling: false });
+const bot = new TelegramBot(process.env.TG_BOT_TOKEN || "", { polling: true });
 bot.on("message", (msg) => {
   console.log("Chat ID:", msg.chat.id);
   bot.stopPolling();
