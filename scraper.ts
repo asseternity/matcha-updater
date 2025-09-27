@@ -1,7 +1,7 @@
 import axios from "axios";
 import * as cheerio from "cheerio";
 
-interface Product {
+export interface Product {
   name: string;
   url: string;
   status: "available" | "sold out";

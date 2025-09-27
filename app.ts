@@ -1,5 +1,6 @@
 // dependencies
 import { scrapeProducts } from "./scraper";
+import { notifyAvailable } from "./telegram";
 import cron from "node-cron";
 import express, { Request, Response } from "express";
 const app = express();
@@ -11,7 +12,7 @@ app.get("/", async (req: Request, res: Response) => {
 });
 
 // test
-app.get("/scrape", async (req, res) => {
+app.get("/scrape", async (req: Request, res: Response) => {
   const products = await scrapeProducts();
   res.json(products);
 });
@@ -20,11 +21,22 @@ app.get("/scrape", async (req, res) => {
 cron.schedule("0 */6 * * *", async () => {
   console.log("Running scraper at", new Date().toLocaleDateString());
   const products = await scrapeProducts();
+  if (!products) return;
   products?.forEach((product) => {
     console.log(
       `${product.name} is ${product.status} | Price: ${product.priceJPY} JPY | Link: ${product.url}`
     );
   });
+  // Notify Telegram if any product is available
+  notifyAvailable(products);
+});
+
+// find chat id
+import TelegramBot from "node-telegram-bot-api";
+const bot = new TelegramBot(process.env.TG_BOT_TOKEN || "", { polling: false });
+bot.on("message", (msg) => {
+  console.log("Chat ID:", msg.chat.id);
+  bot.stopPolling();
 });
 
 // launch
