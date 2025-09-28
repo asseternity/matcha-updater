@@ -11,9 +11,13 @@ if (!chatId)
 
 export const bot = new TelegramBot(token || "", { polling: !!token });
 
-// escape for MarkdownV2 but DO NOT escape dots or slashes (keeps URLs usable)
-const escapeMdV2 = (s = "") => s.replace(/([_*\[\]()~`>#+\-=|{}!])/g, "\\$1");
+// escape for MarkdownV2
+const escapeMdV2 = (s = "") => s.replace(/([_*\[\]()~`>#+\-=|{}.!])/g, "\\$1");
 
+/**
+ * Build a single summary string for automatic or requested updates.
+ * Keeps URLs raw so Telegram will auto-link them.
+ */
 export const makeSummary = (
   products: Product[],
   mode: "automatic" | "requested"
@@ -24,17 +28,15 @@ export const makeSummary = (
   ).length;
   const soldOutCount = total - availableCount;
 
-  const header = `${
-    mode === "automatic" ? "automatic update" : "requested update"
-  }`;
-  const counts = `Total: ${total} | Available: ${availableCount} | Sold Out: ${soldOutCount} |`;
+  const header = mode === "automatic" ? "automatic update" : "requested update";
+  // escape the literal pipes by using '\|' in the string
+  const counts = `Total: ${total} \\| Available: ${availableCount} \\| Sold Out: ${soldOutCount} \\|`;
 
   const lines = products.map((p) => {
     const name = escapeMdV2(p.name || "");
     const price = escapeMdV2(p.priceJPY || "");
-    // URL kept raw so Telegram auto-links it correctly under MarkdownV2
-    const url = p.url || "";
-    return `${name} is ${p.status} | Price: ${price} | Link: ${url}`;
+    const url = p.url || ""; // keep raw
+    return `${name} is ${p.status} \\| Price: ${price} \\| Link: ${url}`;
   });
 
   return [header, counts, ...lines].join("\n");
