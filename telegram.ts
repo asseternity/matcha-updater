@@ -12,6 +12,34 @@ export let bot: TelegramBot | null = null;
 const escapeMdV2 = (s = "") =>
   s.replace(/([_*\[\]\(\)~`>#+=\-|{}.!])/g, "\\$1");
 
+// utility: send long messages safely
+const sendChunkedMessage = async (
+  chatId: number | string,
+  text: string,
+  parseMode: "MarkdownV2" | undefined
+) => {
+  const maxLength = 3800; // margin under 4096
+  const lines = text.split("\n");
+  let chunk: string[] = [];
+  let length = 0;
+
+  for (const line of lines) {
+    if (length + line.length + 1 > maxLength) {
+      await bot?.sendMessage(chatId, chunk.join("\n"), {
+        parse_mode: parseMode,
+      });
+      await new Promise((r) => setTimeout(r, 250));
+      chunk = [];
+      length = 0;
+    }
+    chunk.push(line);
+    length += line.length + 1;
+  }
+  if (chunk.length) {
+    await bot?.sendMessage(chatId, chunk.join("\n"), { parse_mode: parseMode });
+  }
+};
+
 export const makeSummary = (
   products: Product[],
   mode: "automatic" | "requested"
@@ -51,7 +79,7 @@ export const initBot = (enablePolling = false) => {
   console.log("Telegram bot initialized. polling:", enablePolling);
 
   // Register /matcha command handler
-  bot.onText(/^\/matcha(?:\s+(.+))?$/i, async (msg, match) => {
+  bot.onText(/^\/matcha(?:\s+(.+))?$/i, async (msg) => {
     const chatIdLocal = msg.chat.id;
     try {
       await bot?.sendMessage(
@@ -67,17 +95,10 @@ export const initBot = (enablePolling = false) => {
         return;
       }
       const text = makeSummary(products, "requested");
-      await bot?.sendMessage(chatIdLocal, text, { parse_mode: "MarkdownV2" });
+      await sendChunkedMessage(chatIdLocal, text, "MarkdownV2");
     } catch (err) {
       console.error("Error handling /matcha:", err);
-      try {
-        await bot?.sendMessage(
-          chatIdLocal,
-          "Error while scraping. Check logs."
-        );
-      } catch (_) {
-        // ignore further errors
-      }
+      await bot?.sendMessage(chatIdLocal, "Error while scraping. Check logs.");
     }
   });
 };
