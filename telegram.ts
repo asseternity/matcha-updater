@@ -31,8 +31,8 @@ export const makeSummary = (
   const lines = products.map((p) => {
     const name = escapeMdV2(p.name || "");
     const price = escapeMdV2(p.priceJPY || "");
-    const url = p.url || ""; // keep raw so Telegram links work
-    return `${name} is ${p.status} • Price: ${price} • Link: ${url}`;
+    const url = p.url || "";
+    return `[${name}](${url}) is ${p.status} • Price: ${price}`;
   });
 
   return [escapeMdV2(header), counts, ...lines].join("\n");
