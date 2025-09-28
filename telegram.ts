@@ -1,4 +1,3 @@
-// telegram.ts
 import TelegramBot from "node-telegram-bot-api";
 import { scrapeProducts, Product } from "./scraper";
 
