@@ -101,5 +101,15 @@ export const scrapeProducts = async (): Promise<Product[]> => {
     }
   }
 
-  return allProducts;
+  // Deduplicate by key (url + name)
+  const seen = new Set<string>();
+  const unique: Product[] = [];
+  for (const p of allProducts) {
+    const key = `${p.url}|${p.name}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(p);
+  }
+
+  return unique;
 };
