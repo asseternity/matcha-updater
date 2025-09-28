@@ -3,71 +3,74 @@ import TelegramBot from "node-telegram-bot-api";
 import { scrapeProducts, Product } from "./scraper";
 
 const token = process.env.TG_BOT_TOKEN;
-if (!token) {
-  console.error("TG_BOT_TOKEN missing. Telegram features disabled.");
-}
-// create bot in polling mode for simple deployment/testing
+const chatId = process.env.TG_CHAT_ID;
+
+if (!token) console.error("TG_BOT_TOKEN missing. Telegram features disabled.");
+if (!chatId)
+  console.error("TG_CHAT_ID missing. Automatic notifications disabled.");
+
 export const bot = new TelegramBot(token || "", { polling: !!token });
 
-// utility to escape Markdown special chars
-const escapeMarkdown = (s = "") =>
-  s.replace(/([_*\[\]()~`>#+\-=|{}.!])/g, "\\$1");
+// escape for MarkdownV2 but DO NOT escape dots or slashes (keeps URLs usable)
+const escapeMdV2 = (s = "") => s.replace(/([_*\[\]()~`>#+\-=|{}!])/g, "\\$1");
 
-export const notifyAvailable = (products: Product[]) => {
-  const available = products.filter((p) => p.status === "available");
-  if (available.length === 0) return;
-  const message = available
-    .map(
-      (p) =>
-        `*${escapeMarkdown(p.name)}* is now AVAILABLE!\n${
-          p.url
-        }\nPrice: ${escapeMarkdown(p.priceJPY || "")}`
-    )
-    .join("\n\n");
-  const chatId = process.env.TG_CHAT_ID;
-  if (!chatId) return console.error("TG_CHAT_ID not set — cannot notify.");
-  bot
-    .sendMessage(chatId, message, { parse_mode: "Markdown" })
-    .catch(console.error);
+export const makeSummary = (
+  products: Product[],
+  mode: "automatic" | "requested"
+) => {
+  const total = products.length;
+  const availableCount = products.filter(
+    (p) => p.status === "available"
+  ).length;
+  const soldOutCount = total - availableCount;
+
+  const header = `${
+    mode === "automatic" ? "automatic update" : "requested update"
+  }`;
+  const counts = `Total: ${total} | Available: ${availableCount} | Sold Out: ${soldOutCount} |`;
+
+  const lines = products.map((p) => {
+    const name = escapeMdV2(p.name || "");
+    const price = escapeMdV2(p.priceJPY || "");
+    // URL kept raw so Telegram auto-links it correctly under MarkdownV2
+    const url = p.url || "";
+    return `${name} is ${p.status} | Price: ${price} | Link: ${url}`;
+  });
+
+  return [header, counts, ...lines].join("\n");
 };
 
-// /matcha command — scrapes on demand and replies with a short summary
-bot.onText(/^\/matcha(?:\s+(.+))?$/i, async (msg, match) => {
-  const chatId = msg.chat.id;
+export const notifyAvailable = async (products: Product[]) => {
   try {
-    await bot.sendMessage(chatId, "Running matcha scraper — please wait...");
-    const products = await scrapeProducts();
-    if (!products) {
-      await bot.sendMessage(chatId, "Scrape failed or returned no data.");
+    if (!chatId) {
+      console.error("notifyAvailable: TG_CHAT_ID not set — aborting notify.");
       return;
     }
 
-    const available = products.filter((p) => p.status === "available");
-    const soldOutCount = products.length - available.length;
+    const text = makeSummary(products, "automatic");
+    await bot.sendMessage(chatId, text, { parse_mode: "MarkdownV2" });
+    console.log("notifyAvailable: summary sent");
+  } catch (err) {
+    console.error("notifyAvailable: sendMessage error:", err);
+  }
+};
 
-    let text = `*Matcha Catalog Summary*\nTotal: ${products.length}\nAvailable: ${available.length}\nSold out: ${soldOutCount}\n\n`;
-
-    if (available.length) {
-      // limit to first 10 available items to avoid huge messages
-      text += available
-        .slice(0, 10)
-        .map(
-          (p) =>
-            `*${escapeMarkdown(p.name)}*\n${escapeMarkdown(
-              p.priceJPY || ""
-            )}\n${p.url}`
-        )
-        .join("\n\n");
-
-      if (available.length > 10)
-        text += `\n\n_and ${available.length - 10} more available..._`;
-    } else {
-      text += "No available products right now.";
+bot.onText(/^\/matcha(?:\s+(.+))?$/i, async (msg, match) => {
+  const chatIdLocal = msg.chat.id;
+  try {
+    await bot.sendMessage(
+      chatIdLocal,
+      "Running matcha scraper — please wait..."
+    );
+    const products = await scrapeProducts();
+    if (!products) {
+      await bot.sendMessage(chatIdLocal, "Scrape failed or returned no data.");
+      return;
     }
-
-    await bot.sendMessage(chatId, text, { parse_mode: "Markdown" });
+    const text = makeSummary(products, "requested");
+    await bot.sendMessage(chatIdLocal, text, { parse_mode: "MarkdownV2" });
   } catch (err) {
     console.error("Error handling /matcha:", err);
-    await bot.sendMessage(chatId, "Error while scraping. Check logs.");
+    await bot.sendMessage(chatIdLocal, "Error while scraping. Check logs.");
   }
 });
