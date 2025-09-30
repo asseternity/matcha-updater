@@ -11,6 +11,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@prisma/client": "^6.16.2",
     "@quixo3/prisma-session-store": "^3.1.13",
     "@types/express": "^5.0.3",
     "axios": "^1.12.2",
