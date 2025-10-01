@@ -32,7 +32,78 @@ const axiosInstance = axios.create({
   },
 });
 
-export const scrapeProducts = async (): Promise<Product[]> => {
+export const scrapePrincipalProducts = async (): Promise<Product[]> => {
+  const principalProducts: Product[] = [];
+  const url: string = catalogUrls[0];
+  try {
+    const { data } = await axiosInstance.get(url);
+    const $ = cheerio.load(data);
+    $("ul.products > li.product").each((_, el) => {
+      const li = $(el);
+      const name = li.find("div.product-name h4").text().trim();
+      const prodUrl =
+        li.find("a.woocommerce-loop-product__link").attr("href") || url;
+      const status = li.hasClass("outofstock") ? "sold out" : "available";
+      const priceJPY = li
+        .find("span.woocs_price_JPY .woocommerce-Price-amount")
+        .first()
+        .text()
+        .trim();
+      principalProducts.push({ name, url: prodUrl, status, priceJPY });
+    });
+  } catch (err) {
+    console.error(`Error scraping catalog ${url}:`, err);
+  }
+  return principalProducts;
+};
+
+export const scrapeOtherProducts = async (): Promise<Product[]> => {
+  const otherProducts: Product[] = [];
+  for (const url of singleProductUrls) {
+    try {
+      const { data } = await axiosInstance.get(url);
+      const $ = cheerio.load(data);
+
+      $(".variations_form.cart").each((_, form) => {
+        const formEl = $(form);
+        const name =
+          $("h1.product_title").first().text().trim() || "Unknown product";
+
+        const stockText = formEl
+          .find(".stock.single-stock-status")
+          .text()
+          .toLowerCase();
+        const formStatus: "available" | "sold out" = stockText.includes(
+          "out of stock"
+        )
+          ? "sold out"
+          : "available";
+
+        formEl.find(".product-form-row").each((_, row) => {
+          const rowEl = $(row);
+          const size = rowEl.find("dl.pa-size dd").first().text().trim();
+          const priceJPY = rowEl
+            .find(".woocs_price_JPY .woocommerce-Price-amount")
+            .first()
+            .text()
+            .trim();
+
+          otherProducts.push({
+            name: `${name}${size ? ` (${size})` : ""}`,
+            url,
+            status: formStatus,
+            priceJPY,
+          });
+        });
+      });
+    } catch (err) {
+      console.error(`Error scraping single product ${url}:`, err);
+    }
+  }
+  return otherProducts;
+};
+
+export const scrapeAllProducts = async (): Promise<Product[]> => {
   const allProducts: Product[] = [];
 
   // scrape catalog pages

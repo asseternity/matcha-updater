@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 type Subscriber = PrismaClient["subscriber"] extends { findUnique: any }
   ? { id: number; chatId: number; createdAt: Date }
   : any;
-import { scrapeProducts, Product } from "./scraper";
+import { scrapeAllProducts, Product } from "./scraper";
 
 const token = process.env.TG_BOT_TOKEN ?? "";
 
@@ -149,7 +149,7 @@ export const initBot = (enablePolling = false) => {
         chatIdLocal,
         "Running matcha scraper — please wait..."
       );
-      const products = await scrapeProducts();
+      const products = await scrapeAllProducts();
       if (!products || products.length === 0) {
         await bot?.sendMessage(
           chatIdLocal,
