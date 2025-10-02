@@ -82,18 +82,20 @@ export const scrapeOtherProducts = async (): Promise<Product[]> => {
         formEl.find(".product-form-row").each((_, row) => {
           const rowEl = $(row);
           const size = rowEl.find("dl.pa-size dd").first().text().trim();
-          const priceJPY = rowEl
-            .find(".woocs_price_JPY .woocommerce-Price-amount")
-            .first()
-            .text()
-            .trim();
+          if (parseInt(size) > 99) {
+            const priceJPY = rowEl
+              .find(".woocs_price_JPY .woocommerce-Price-amount")
+              .first()
+              .text()
+              .trim();
 
-          otherProducts.push({
-            name: `${name}${size ? ` (${size})` : ""}`,
-            url,
-            status: formStatus,
-            priceJPY,
-          });
+            otherProducts.push({
+              name: `${name}${size ? ` (${size})` : ""}`,
+              url,
+              status: formStatus,
+              priceJPY,
+            });
+          }
         });
       });
     } catch (err) {
@@ -153,19 +155,20 @@ export const scrapeAllProducts = async (): Promise<Product[]> => {
         formEl.find(".product-form-row").each((_, row) => {
           const rowEl = $(row);
           const size = rowEl.find("dl.pa-size dd").first().text().trim();
-          console.log(size);
-          const priceJPY = rowEl
-            .find(".woocs_price_JPY .woocommerce-Price-amount")
-            .first()
-            .text()
-            .trim();
+          if (parseInt(size) > 99) {
+            const priceJPY = rowEl
+              .find(".woocs_price_JPY .woocommerce-Price-amount")
+              .first()
+              .text()
+              .trim();
 
-          allProducts.push({
-            name: `${name}${size ? ` (${size})` : ""}`,
-            url,
-            status: formStatus,
-            priceJPY,
-          });
+            allProducts.push({
+              name: `${name}${size ? ` (${size})` : ""}`,
+              url,
+              status: formStatus,
+              priceJPY,
+            });
+          }
         });
       });
     } catch (err) {
