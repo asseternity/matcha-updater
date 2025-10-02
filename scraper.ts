@@ -153,6 +153,7 @@ export const scrapeAllProducts = async (): Promise<Product[]> => {
         formEl.find(".product-form-row").each((_, row) => {
           const rowEl = $(row);
           const size = rowEl.find("dl.pa-size dd").first().text().trim();
+          console.log(size);
           const priceJPY = rowEl
             .find(".woocs_price_JPY .woocommerce-Price-amount")
             .first()
